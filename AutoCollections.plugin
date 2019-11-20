@@ -1,0 +1,47 @@
+<?php
+/**
+ * AutoCollections
+ *
+ * DESCRIPTION
+ *
+ * Manuel Barbiero 2019: Sets collection on parent if it has more than 10 children (OnDocFormSave)
+ *
+ * @var modX $modx
+ * @var array $scriptProperties
+ */
+$corePath = $modx->getOption('collections.core_path', null, $modx->getOption('core_path', null, MODX_CORE_PATH) . 'components/collections/');
+/** @var Collections $collections */
+$collections = $modx->getService(
+    'collections',
+    'Collections',
+    $corePath . 'model/collections/',
+    array(
+        'core_path' => $corePath
+    )
+);
+
+// be sure Collections is loaded
+if (!($collections instanceof Collections)) return;
+
+// Applies collection content type for resources with more than 10 children
+if ($modx->event->name == "OnDocFormSave") {
+    $resource = $modx->event->params['resource'];
+    $resourceID = $resource->get('id');
+    $isParent = $resource->hasChildren();
+    $childrenCount = 0;
+	// Check if resource is parent
+    if ($isParent) {
+        $schema = array(
+            'parent' => $resourceID,
+            'deleted' => false,
+            'published' => true,
+        );
+        $childrenCount += (int) $modx->getCount('modResource', $schema); 
+        $classKey = $resource->get('class_key');
+        // Checks if resource has more than 10 chidren and not a collection
+        if ($childrenCount > 10 && ($classKey != 'CollectionContainer')) {
+            $resource->set('class_key', 'CollectionContainer');
+            $resource->save();
+        }
+    }
+}
